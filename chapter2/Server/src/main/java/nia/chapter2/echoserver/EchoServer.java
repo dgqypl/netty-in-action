@@ -35,17 +35,21 @@ public class EchoServer {
     }
 
     public void start() throws Exception {
+        EventLoopGroup bossGroup = new NioEventLoopGroup();
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+
         final EchoServerHandler serverHandler = new EchoServerHandler();
-        EventLoopGroup group = new NioEventLoopGroup();
+        final DummyChannelDuplexHandler dummyChannelDuplexHandler = new DummyChannelDuplexHandler();
+
         try {
             ServerBootstrap b = new ServerBootstrap();
-            b.group(group)
+            b.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
                 .localAddress(new InetSocketAddress(port))
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
-                        ch.pipeline().addLast(serverHandler);
+                        ch.pipeline().addLast(dummyChannelDuplexHandler).addLast(serverHandler);
                     }
                 });
 
@@ -54,7 +58,8 @@ public class EchoServer {
                 " started and listening for connections on " + f.channel().localAddress());
             f.channel().closeFuture().sync();
         } finally {
-            group.shutdownGracefully().sync();
+            workerGroup.shutdownGracefully().sync();
+            bossGroup.shutdownGracefully().sync();
         }
     }
 }
